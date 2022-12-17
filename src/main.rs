@@ -9,6 +9,7 @@ fn main() -> eyre::Result<()> {
             prereqs::prereqs()?,
             tldr::Tldr::cmd()?,
             sourcegraph::Sourcegraph::cmd()?,
+            github::GitHub::cmd()?,
         ])
         .get_matches();
 
@@ -16,6 +17,7 @@ fn main() -> eyre::Result<()> {
         Some(("prereqs", subcmd)) => prereqs_exec(subcmd),
         Some(("tldr", subcmd)) => tldr::Tldr::exec(subcmd),
         Some(("sourcegraph", subcmd)) => sourcegraph::Sourcegraph::exec(subcmd),
+        Some(("github", subcmd)) => github::GitHub::exec(subcmd),
         _ => Err(eyre::anyhow!("no command selected!")),
     }
 }
