@@ -21,7 +21,7 @@ impl util::Cmd for Search {
                 let cmd = format!("src search {external} {}", raw.join(" "));
                 println!("{cmd}");
 
-                let mut cmd_args = vec!["src", "search", "{external}"];
+                let mut cmd_args = vec!["src", "search", external];
                 cmd_args.append(&mut raw.iter().map(|s| &**s).collect());
 
                 util::shell::run(cmd_args.as_slice())?;
