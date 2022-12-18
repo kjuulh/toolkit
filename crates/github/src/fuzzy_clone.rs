@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use clap::value_parser;
 use eyre::Context;
 
 pub struct FuzzyClone;
@@ -201,13 +202,18 @@ impl FuzzyClone {
                 }),
             )?;
         } else {
-            util::shell::run(&["git", "pull"], None)?;
+            util::shell::run(
+                &["git", "pull"],
+                Some(util::shell::RunOptions {
+                    path: git_repo_path.clone(),
+                }),
+            )?;
         }
 
         Ok(git_repo_path)
     }
 
-    fn run() -> eyre::Result<()> {
+    fn run(print_dest: &bool) -> eyre::Result<()> {
         let settings = Self::get_settings()?;
         if settings.auto_update {
             println!("running auto update");
@@ -234,9 +240,16 @@ impl FuzzyClone {
         let chosen = util::shell::run_with_input_and_output(&["fzf"], entries_str)?;
         let chosen = std::str::from_utf8(&chosen.stdout)?;
 
-        Self::clone(GitHubEntry::from(chosen.to_string()).ok_or(eyre::anyhow!(
+        let path = Self::clone(GitHubEntry::from(chosen.to_string()).ok_or(eyre::anyhow!(
             "could not parse choice as github entry <org>/<repo>"
         ))?)?;
+
+        if *print_dest {
+            print!(
+                "{}",
+                path.to_str().ok_or(eyre::anyhow!("path was not found"))?
+            );
+        }
 
         Ok(())
     }
@@ -255,13 +268,24 @@ impl util::Cmd for FuzzyClone {
         Ok(clap::Command::new("fuzzy-clone")
             .alias("fc")
             .alias("c")
+            .arg(
+                clap::Arg::new("print-dest")
+                    .long("print-dest")
+                    .value_name("print-dest")
+                    .value_parser(value_parser!(bool))
+                    .num_args(0..=1)
+                    .require_equals(true)
+                    .default_missing_value("true"),
+            )
             .subcommand(clap::Command::new("update")))
     }
 
     fn exec(args: &clap::ArgMatches) -> eyre::Result<()> {
+        let print_dest = args.get_one::<bool>("print-dest").unwrap_or(&false);
+
         match args.subcommand() {
             Some(("update", _)) => Self::update()?,
-            _ => Self::run()?,
+            _ => Self::run(print_dest)?,
         }
 
         Ok(())
