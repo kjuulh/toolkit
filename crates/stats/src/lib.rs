@@ -1,6 +1,7 @@
 mod code;
 mod network;
 mod procs;
+mod storage;
 
 pub struct Stats;
 
@@ -17,6 +18,7 @@ impl util::Cmd for Stats {
                 code::Code::cmd()?,
                 network::Network::cmd()?,
                 procs::Procs::cmd()?,
+                storage::Storage::cmd()?,
             ])
             .subcommand_required(true);
 
@@ -28,6 +30,7 @@ impl util::Cmd for Stats {
             Some(("code", args)) => code::Code::exec(args),
             Some(("network", args)) => network::Network::exec(args),
             Some(("procs", args)) => procs::Procs::exec(args),
+            Some(("storage", args)) => storage::Storage::exec(args),
             _ => Stats::run(),
         }
     }
