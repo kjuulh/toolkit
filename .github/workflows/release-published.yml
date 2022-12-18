@@ -12,7 +12,6 @@ jobs:
     steps:
       - name: Release to homebrew tap
         uses: Justintime50/homebrew-releaser@v1
-        if: ${{ github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'chore(release)') }}
         with:
           # The name of the homebrew tap to publish your formula to as it appears on GitHub.
           # Required - strings.
