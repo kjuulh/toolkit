@@ -138,7 +138,7 @@ jobs:
 
           # Git author info used to commit to the homebrew tap.
           # Defaults are shown - strings.
-          commit_owner: homebrew-releaser
+          commit_owner: kjuulh
           commit_email: homebrew-releaser@kjuulh.io
 
           # Custom dependencies in case other formulas are needed to build the current one.
