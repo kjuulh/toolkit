@@ -1,5 +1,3 @@
-use std::{borrow::Borrow, ffi::OsString};
-
 pub struct Search;
 
 impl util::Cmd for Search {
@@ -12,8 +10,8 @@ impl util::Cmd for Search {
     fn exec(args: &clap::ArgMatches) -> eyre::Result<()> {
         match args.subcommand() {
             Some((external, args)) => {
-                let mut raw = args
-                    .get_many::<OsString>("")
+                let raw = args
+                    .get_many::<std::ffi::OsString>("")
                     .ok_or(eyre::anyhow!("please pass some args to search"))?
                     .map(|s| s.as_os_str())
                     .map(|s| s.to_string_lossy().to_string())
