@@ -4,7 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["crates/tldr", "crates/util", "crates/sourcegraph", "crates/github"]
+members = [
+  "crates/tldr",
+  "crates/util",
+  "crates/sourcegraph",
+  "crates/github",
+  "crates/stats",
+]
 
 [workspace.dependencies]
 clap = { version = "4.0.29", features = ["cargo"] }
@@ -19,6 +25,7 @@ github = { path = "crates/github" }
 tldr = { path = "crates/tldr" }
 sourcegraph = { path = "crates/sourcegraph" }
 util = { path = "crates/util" }
+stats = { path = "crates/stats" }
 
 clap.workspace = true
 eyre.workspace = true

@@ -248,6 +248,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "stats"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dirs",
+ "eyre",
+ "util",
+]
+
+[[package]]
 name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -312,6 +322,7 @@ dependencies = [
  "eyre",
  "github",
  "sourcegraph",
+ "stats",
  "tldr",
  "util",
 ]
