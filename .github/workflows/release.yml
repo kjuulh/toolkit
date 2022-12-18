@@ -110,5 +110,5 @@ jobs:
             *.deb
             *.tar.gz
             *.zip
-          name: ${{ steps.get_version.outputs.value }}
+          name: v${{ steps.get_version.outputs.value }}
           tag_name: v${{ steps.get_version.outputs.value }}
