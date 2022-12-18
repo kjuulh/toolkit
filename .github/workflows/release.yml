@@ -188,4 +188,4 @@ jobs:
 
           # Logs debugging info to console.
           # Default is shown - boolean.
-          debug: false
+          debug: true
