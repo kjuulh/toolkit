@@ -147,7 +147,7 @@ jobs:
 
           # Custom install command for your formula.
           # Required - string.
-          install: 'bin.install "toolkit" => "toolkit"'
+          install: 'bin.install "toolkit"'
 
           # Custom test command for your formula so you can run `brew test`.
           # Optional - string.
