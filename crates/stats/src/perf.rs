@@ -2,13 +2,14 @@ pub struct Perf;
 
 impl Perf {
     fn run() -> eyre::Result<()> {
-        if let Err(_) = util::shell::run_with_input_and_output(&["ytop", "--version"], "".into()) {
+        if let Err(_) = util::shell::run_with_input_and_output(&["bottom", "--version"], "".into())
+        {
             return Err(eyre::anyhow!(
-                "could not find ytop, please install or add to PATH"
+                "could not find bottom, please install or add to PATH"
             ));
         }
 
-        util::shell::run(&["ytop"], None)?;
+        util::shell::run(&["bottom"], None)?;
 
         Ok(())
     }
