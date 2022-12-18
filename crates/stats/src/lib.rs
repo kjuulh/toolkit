@@ -1,5 +1,6 @@
 mod code;
 mod network;
+mod perf;
 mod procs;
 mod storage;
 
@@ -19,6 +20,7 @@ impl util::Cmd for Stats {
                 network::Network::cmd()?,
                 procs::Procs::cmd()?,
                 storage::Storage::cmd()?,
+                perf::Perf::cmd()?,
             ])
             .subcommand_required(true);
 
@@ -31,6 +33,7 @@ impl util::Cmd for Stats {
             Some(("network", args)) => network::Network::exec(args),
             Some(("procs", args)) => procs::Procs::exec(args),
             Some(("storage", args)) => storage::Storage::exec(args),
+            Some(("perf", args)) => perf::Perf::exec(args),
             _ => Stats::run(),
         }
     }
