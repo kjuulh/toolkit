@@ -26,6 +26,7 @@ struct Settings {
     git_root: String,
     cache_dir: String,
     cache_file_path: String,
+    auto_update: bool,
 }
 
 impl Settings {
@@ -44,6 +45,10 @@ impl Settings {
                 .map(|s| s.to_string())
                 .collect(),
             git_root: std::env::var("GITHUB_FC_ROOT").context("GITHUB_FC_ROOT is not set")?,
+            auto_update: std::env::var("GITHUB_FC_AUTO_UPDATE")
+                .unwrap_or_else(|_| "false".into())
+                .parse()
+                .unwrap_or_default(),
             cache_dir: cache_dir.to_string_lossy().to_string(),
             cache_file_path: file_path.to_string_lossy().to_string(),
         })
@@ -95,12 +100,8 @@ impl FuzzyClone {
             return Ok(false);
         }
         let metadata_time = cf_path.metadata()?.modified()?;
+        // Update at least once a day
         let cur_time = std::time::SystemTime::now() - std::time::Duration::new(60 * 60 * 24, 0);
-
-        println!(
-            "metadata_time: {:?}, cur_time: {:?}",
-            metadata_time, cur_time
-        );
 
         if metadata_time < cur_time {
             return Ok(false);
@@ -207,6 +208,15 @@ impl FuzzyClone {
     }
 
     fn run() -> eyre::Result<()> {
+        let settings = Self::get_settings()?;
+        if settings.auto_update {
+            println!("running auto update");
+            util::shell::run(
+                &["nohup", "toolkit", "github", "fuzzy-clone", "update"],
+                None,
+            )?;
+        }
+
         let entries = if !Self::cache_exists()? {
             let entries = Self::get_entries()?;
             Self::set_cache(&entries)?;
@@ -232,6 +242,7 @@ impl FuzzyClone {
     }
 
     fn update() -> eyre::Result<()> {
+        println!("Updating...\nThis may take a while");
         let entries = Self::get_entries()?;
         Self::set_cache(&entries)?;
 
