@@ -6,7 +6,7 @@ impl util::Cmd for Auth {
     }
 
     fn exec(_: &clap::ArgMatches) -> eyre::Result<()> {
-        util::shell::run(&["gh", "auth", "login"])?;
+        util::shell::run(&["gh", "auth", "login"], None)?;
 
         Ok(())
     }

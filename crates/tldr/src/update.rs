@@ -25,6 +25,7 @@ impl util::Cmd for Update {
             .split(" ")
             .collect::<Vec<&str>>()
             .as_slice(),
+            None,
         )?;
 
         Ok(())

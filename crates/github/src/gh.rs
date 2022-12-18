@@ -14,7 +14,7 @@ impl Gh {
         let mut cmd_args = vec!["gh", external];
         cmd_args.append(&mut raw.iter().map(|s| &**s).collect());
 
-        util::shell::run(cmd_args.as_slice())?;
+        util::shell::run(cmd_args.as_slice(), None)?;
 
         Ok(())
     }
@@ -29,7 +29,7 @@ impl util::Cmd for Gh {
         match args.subcommand() {
             Some((external, args)) => Self::run(external, args),
             _ => {
-                util::shell::run(&["gh"])?;
+                util::shell::run(&["gh"], None)?;
 
                 Err(eyre::anyhow!("missing argument"))
             }

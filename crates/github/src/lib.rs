@@ -1,4 +1,5 @@
 mod auth;
+mod fuzzy_clone;
 mod gh;
 
 pub struct GitHub;
@@ -17,7 +18,7 @@ impl GitHub {
         let mut cmd_args = vec!["gh", external];
         cmd_args.append(&mut raw.iter().map(|s| &**s).collect());
 
-        util::shell::run(cmd_args.as_slice())?;
+        util::shell::run(cmd_args.as_slice(), None)?;
 
         Ok(())
     }
@@ -26,13 +27,19 @@ impl GitHub {
 impl util::Cmd for GitHub {
     fn cmd() -> eyre::Result<clap::Command> {
         Ok(clap::Command::new("github")
-            .subcommands(&[auth::Auth::cmd()?, gh::Gh::cmd()?])
+            .subcommands(&[
+                auth::Auth::cmd()?,
+                gh::Gh::cmd()?,
+                fuzzy_clone::FuzzyClone::cmd()?,
+            ])
             .allow_external_subcommands(true))
     }
 
     fn exec(args: &clap::ArgMatches) -> eyre::Result<()> {
         match args.subcommand() {
             Some(("auth", subm)) => auth::Auth::exec(subm),
+            Some(("fuzzy-clone", subm)) => fuzzy_clone::FuzzyClone::exec(subm),
+            Some(("fc", subm)) => fuzzy_clone::FuzzyClone::exec(subm),
             Some(("gh", subm)) => gh::Gh::exec(subm),
             Some((external, args)) => Self::run(external, args),
             _ => Err(eyre::anyhow!("missing argument")),

@@ -1,21 +1,31 @@
 use std::io::Write;
 
-pub fn run(args: &[&str]) -> eyre::Result<()> {
-    let output = std::process::Command::new(
+pub struct RunOptions {
+    pub path: std::path::PathBuf,
+}
+
+pub fn run(args: &[&str], opts: Option<RunOptions>) -> eyre::Result<()> {
+    let mut cmd = std::process::Command::new(
         args.first()
             .ok_or(eyre::anyhow!("could not find first arg"))?,
-    )
-    .args(
-        args.to_vec()
-            .into_iter()
-            .skip(1)
-            .collect::<Vec<&str>>()
-            .as_slice(),
-    )
-    .stdout(std::process::Stdio::inherit())
-    .stderr(std::process::Stdio::inherit())
-    .stdin(std::process::Stdio::inherit())
-    .output();
+    );
+
+    if let Some(opts) = opts {
+        cmd.current_dir(opts.path);
+    }
+
+    let output = cmd
+        .args(
+            args.to_vec()
+                .into_iter()
+                .skip(1)
+                .collect::<Vec<&str>>()
+                .as_slice(),
+        )
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .stdin(std::process::Stdio::inherit())
+        .output();
 
     match output {
         Ok(o) => {

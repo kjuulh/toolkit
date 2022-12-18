@@ -5,7 +5,7 @@ pub struct Sourcegraph;
 
 impl Sourcegraph {
     fn run() -> eyre::Result<()> {
-        util::shell::run(&["src"])?;
+        util::shell::run(&["src"], None)?;
 
         Err(eyre::anyhow!("missing argument"))
     }
