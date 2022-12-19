@@ -39,7 +39,7 @@ jobs:
             "dust"
             "bottom"
             "procs"
-            "src-cli"
+            "sourcegraph/src-cli/src-cli"
 
           # Custom install command for your formula.
           # Required - string.
