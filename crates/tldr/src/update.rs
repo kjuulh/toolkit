@@ -12,7 +12,9 @@ impl util::Cmd for Update {
         let mut tldr_cache_dir = cache_dir.clone();
         tldr_cache_dir.push("kah-toolkit/tldr/store/");
 
-        std::fs::remove_dir_all(&tldr_cache_dir)?;
+        if let Err(_) = std::fs::remove_dir_all(&tldr_cache_dir) {
+            // ignored
+        }
         std::fs::create_dir_all(&tldr_cache_dir)?;
 
         util::shell::run(
