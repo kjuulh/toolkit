@@ -2,14 +2,13 @@ pub struct Perf;
 
 impl Perf {
     fn run() -> eyre::Result<()> {
-        if let Err(_) = util::shell::run_with_input_and_output(&["bottom", "--version"], "".into())
-        {
+        if let Err(_) = util::shell::run_with_input_and_output(&["btm", "--version"], "".into()) {
             return Err(eyre::anyhow!(
-                "could not find bottom, please install or add to PATH"
+                "could not find btm, please install or add to PATH"
             ));
         }
 
-        util::shell::run(&["bottom"], None)?;
+        util::shell::run(&["btm"], None)?;
 
         Ok(())
     }

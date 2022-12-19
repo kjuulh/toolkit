@@ -8,7 +8,7 @@ impl Procs {
             ));
         }
 
-        util::shell::run(&["procs"], None)?;
+        util::shell::run_with_input(&["procs"], "".into())?;
 
         Ok(())
     }

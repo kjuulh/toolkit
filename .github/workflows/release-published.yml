@@ -16,7 +16,7 @@ jobs:
           # The name of the homebrew tap to publish your formula to as it appears on GitHub.
           # Required - strings.
           homebrew_owner: kjuulh
-          homebrew_tap: brew
+          homebrew_tap: homebrew-brew
 
           # The name of the folder in your homebrew tap where formula will be committed to.
           # Default is shown - string.
@@ -40,6 +40,8 @@ jobs:
             "bottom"
             "procs"
             "sourcegraph/src-cli/src-cli"
+            "tokei"
+            "bandwhich"
 
           # Custom install command for your formula.
           # Required - string.
