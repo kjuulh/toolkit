@@ -202,12 +202,12 @@ impl FuzzyClone {
                 }),
             )?;
         } else {
-            util::shell::run(
+            let _ = util::shell::run(
                 &["git", "pull"],
                 Some(util::shell::RunOptions {
                     path: git_repo_path.clone(),
                 }),
-            )?;
+            );
         }
 
         Ok(git_repo_path)
