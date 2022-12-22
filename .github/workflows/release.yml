@@ -43,7 +43,7 @@ jobs:
             release-target: darwin-arm64
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -60,7 +60,7 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: Setup cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
 
@@ -94,7 +94,7 @@ jobs:
           | gzip --best
           > 'toolkit-${{ steps.get_version.outputs.value }}-${{ matrix.release-target }}.tar.gz'
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.release-target }}
           path: |
