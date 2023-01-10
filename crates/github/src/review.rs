@@ -19,13 +19,13 @@ impl Review {
         Self { backend }
     }
 
-    // Workflow
-    // 1. Fetch list of repos
-    // 2. Present menu
-    // 3. Choose begin quick review
-    // 4. Present pr and use delta to view changes
-    // 5. Approve, open, skip or quit
-    // 6. Repeat from 4
+    /// Workflow
+    /// 1. Fetch list of repos
+    /// 2. Present menu
+    /// 3. Choose begin quick review
+    /// 4. Present pr and use delta to view changes
+    /// 5. Approve, open, skip or quit
+    /// 6. Repeat from 4
     fn run(&self, review_requested: Option<String>) -> eyre::Result<()> {
         let prs = self.backend.get_prs(review_requested)?;
 
@@ -42,13 +42,17 @@ impl Review {
             .load_preset(UTF8_HORIZONTAL_ONLY)
             .set_content_arrangement(comfy_table::ContentArrangement::Dynamic)
             .set_header(vec![
-                Cell::new("repo"),
-                Cell::new("title"),
-                Cell::new("number"),
+                Cell::new("repo").add_attribute(comfy_table::Attribute::Bold),
+                Cell::new("title").add_attribute(comfy_table::Attribute::Bold),
+                Cell::new("number").add_attribute(comfy_table::Attribute::Bold),
             ])
             .add_rows(prs.iter().map(|pr| {
                 let pr = pr.clone();
-                vec![pr.repository.name, pr.title, pr.number.to_string()]
+                vec![
+                    Cell::new(pr.repository.name).fg(comfy_table::Color::Green),
+                    Cell::new(pr.title),
+                    Cell::new(pr.number.to_string()),
+                ]
             }));
 
         table.to_string()

@@ -42,6 +42,7 @@ impl ReviewBackend for DefaultReviewBackend {
     }
 
     fn present_prs(&self, table: String) -> eyre::Result<()> {
+        println!("{table}");
         Ok(())
     }
 }
