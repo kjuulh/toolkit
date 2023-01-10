@@ -1,6 +1,8 @@
 mod auth;
 mod fuzzy_clone;
 mod gh;
+mod review;
+pub(crate) mod review_backend;
 
 pub struct GitHub;
 
@@ -31,6 +33,7 @@ impl util::Cmd for GitHub {
                 auth::Auth::cmd()?,
                 gh::Gh::cmd()?,
                 fuzzy_clone::FuzzyClone::cmd()?,
+                review::Review::cmd()?,
             ])
             .allow_external_subcommands(true))
     }
@@ -41,6 +44,7 @@ impl util::Cmd for GitHub {
             Some(("fuzzy-clone", subm)) => fuzzy_clone::FuzzyClone::exec(subm),
             Some(("fc", subm)) => fuzzy_clone::FuzzyClone::exec(subm),
             Some(("gh", subm)) => gh::Gh::exec(subm),
+            Some(("review", subm)) => review::Review::exec(subm),
             Some((external, args)) => Self::run(external, args),
             _ => Err(eyre::anyhow!("missing argument")),
         }
