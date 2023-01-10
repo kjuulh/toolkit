@@ -75,6 +75,7 @@ mod tests {
 
     use super::*;
 
+    use base64::Engine;
     use pretty_assertions::{assert_eq, assert_ne};
 
     #[test]
@@ -129,16 +130,30 @@ mod tests {
                 },
             },
         ];
-        let expected_table = "─────────────────────────────────────────────
- repo              title              number 
-═════════════════════════════════════════════
- some-name         some-title         0      
-─────────────────────────────────────────────
- some-other-name   some-other-title   1      
-─────────────────────────────────────────────";
 
+        let expected_table = "4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSAChtbMW0gcmVwbyAgICAgICAgICAgIBtbMG0gG1sxbSB0aXRsZSAgICAgICAgICAgIBtbMG0gG1sxbSBudW1iZXIgG1swbQrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKG1szODs1OzEwbSBzb21lLW5hbWUgICAgICAgG1szOW0gIHNvbWUtdGl0bGUgICAgICAgICAwICAgICAgCuKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAobWzM4OzU7MTBtIHNvbWUtb3RoZXItbmFtZSAbWzM5bSAgc29tZS1vdGhlci10aXRsZSAgIDEgICAgICAK4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA";
         let output = Review::generate_prs_table(&prs);
 
-        assert_eq!(output, expected_table.to_string())
+        compare_tables(output, expected_table)
+    }
+
+    fn compare_tables(actual: String, snapshot: &str) {
+        let b64 = base64::engine::general_purpose::STANDARD_NO_PAD;
+        let snapshot = snapshot.clone().replace("\n", "").replace(" ", "");
+        println!("expected");
+        println!(
+            "{}",
+            std::str::from_utf8(
+                b64.decode(&snapshot)
+                    .expect("table to be decodeable")
+                    .as_slice()
+            )
+            .expect("to be utf8")
+        );
+
+        println!("actual");
+        println!("{actual}");
+
+        assert_eq!(b64.encode(actual), snapshot);
     }
 }
