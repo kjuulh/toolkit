@@ -46,7 +46,7 @@ impl Review {
                 Cell::new("title").add_attribute(comfy_table::Attribute::Bold),
                 Cell::new("number").add_attribute(comfy_table::Attribute::Bold),
             ])
-            .add_rows(prs.iter().map(|pr| {
+            .add_rows(prs.iter().take(20).map(|pr| {
                 let pr = pr.clone();
                 vec![
                     Cell::new(pr.repository.name).fg(comfy_table::Color::Green),
