@@ -1,8 +1,10 @@
-use crate::review_backend::{models::PullRequest, DefaultReviewBackend, DynReviewBackend};
+use crate::review_backend::{
+    models::{MenuChoice, PullRequest, ReviewMenuChoice},
+    DefaultReviewBackend, DynReviewBackend,
+};
 
-use comfy_table::{presets::UTF8_HORIZONTAL_ONLY, Cell, Row, Table};
-#[cfg(test)]
-use mockall::{automock, mock, predicate::*};
+use comfy_table::{presets::UTF8_HORIZONTAL_ONLY, Cell, Table};
+use thiserror::Error;
 
 pub struct Review {
     backend: DynReviewBackend,
@@ -12,6 +14,12 @@ impl Default for Review {
     fn default() -> Self {
         Self::new(std::sync::Arc::new(DefaultReviewBackend::new()))
     }
+}
+
+#[derive(Debug, Error)]
+pub enum ReviewErrors {
+    #[error("user chose to exit")]
+    UserExit,
 }
 
 impl Review {
@@ -27,11 +35,24 @@ impl Review {
     /// 5. Approve, open, skip or quit
     /// 6. Repeat from 4
     fn run(&self, review_requested: Option<String>) -> eyre::Result<()> {
-        let prs = self.backend.get_prs(review_requested)?;
+        let prs = self.backend.get_prs(review_requested.clone())?;
 
         let prs_table = Self::generate_prs_table(&prs);
-
         self.backend.present_prs(prs_table)?;
+
+        match self.backend.present_menu()? {
+            MenuChoice::Exit => eyre::bail!(ReviewErrors::UserExit),
+            MenuChoice::Begin => match self.review(&prs)? {
+                Some(choice) => match choice {
+                    MenuChoice::Exit => eyre::bail!(ReviewErrors::UserExit),
+                    MenuChoice::List => return self.run(review_requested.clone()),
+                    _ => eyre::bail!("invalid choice"),
+                },
+                None => {}
+            },
+            MenuChoice::Search => todo!(),
+            MenuChoice::List => return self.run(review_requested.clone()),
+        }
 
         Ok(())
     }
@@ -57,6 +78,63 @@ impl Review {
 
         table.to_string()
     }
+
+    fn review(&self, prs: &Vec<PullRequest>) -> eyre::Result<Option<MenuChoice>> {
+        for pr in prs {
+            self.backend.clear()?;
+            self.backend.present_pr(pr)?;
+            self.review_pr(pr)?;
+            if let Some(choice) = self.present_pr_menu(pr)? {
+                return Ok(Some(choice));
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn review_pr(&self, pr: &PullRequest) -> eyre::Result<()> {
+        self.backend.present_diff(pr)?;
+        Ok(())
+    }
+
+    fn approve(&self, pr: &PullRequest) -> eyre::Result<()> {
+        self.backend.approve(pr)?;
+
+        Ok(())
+    }
+
+    fn open_browser(&self, pr: &PullRequest) -> eyre::Result<Option<MenuChoice>> {
+        self.backend.pr_open_browser(pr)?;
+
+        self.present_pr_menu(pr)
+    }
+
+    fn present_pr_menu(&self, pr: &PullRequest) -> eyre::Result<Option<MenuChoice>> {
+        self.backend.present_pr(pr)?;
+
+        match self.backend.present_review_menu(pr)? {
+            ReviewMenuChoice::Exit => return Ok(Some(MenuChoice::Exit)),
+            ReviewMenuChoice::List => return Ok(Some(MenuChoice::List)),
+            ReviewMenuChoice::Approve => {
+                self.approve(pr)?;
+                return self.present_pr_menu(pr);
+            }
+            ReviewMenuChoice::Open => return self.open_browser(pr),
+            ReviewMenuChoice::Skip => {}
+            ReviewMenuChoice::Merge => self.merge(pr)?,
+            ReviewMenuChoice::ApproveAndMerge => {
+                self.approve(pr)?;
+                self.merge(pr)?;
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn merge(&self, pr: &PullRequest) -> eyre::Result<()> {
+        self.backend.enable_auto_merge(pr);
+        Ok(())
+    }
 }
 
 impl util::Cmd for Review {
@@ -71,12 +149,16 @@ impl util::Cmd for Review {
 
 #[cfg(test)]
 mod tests {
-    use crate::review_backend::{models::Repository, MockReviewBackend};
+    use crate::review_backend::{
+        models::{self, Repository},
+        MockReviewBackend,
+    };
 
     use super::*;
 
     use base64::Engine;
-    use pretty_assertions::{assert_eq, assert_ne};
+    use mockall::predicate::eq;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn can_fetch_prs() {
@@ -104,12 +186,17 @@ mod tests {
             .times(1)
             .returning(move |_| Ok(backendprs.clone()));
 
+        backend
+            .expect_present_menu()
+            .times(1)
+            .returning(|| Ok(models::MenuChoice::Exit));
+
         backend.expect_present_prs().times(1).returning(|_| Ok(()));
 
         let review = Review::new(std::sync::Arc::new(backend));
-        review
-            .run(Some("kjuulh".into()))
-            .expect("to return a list of pull requests");
+        let res = review.run(Some("kjuulh".into()));
+
+        assert_err::<ReviewErrors, _>(res)
     }
 
     #[test]
@@ -155,5 +242,16 @@ mod tests {
         println!("{actual}");
 
         assert_eq!(b64.encode(actual), snapshot);
+    }
+
+    fn assert_err<TExpected, TVal>(res: eyre::Result<TVal>) {
+        match res {
+            Err(e) => {
+                if !e.is::<ReviewErrors>() {
+                    panic!("invalid error: {}", e)
+                }
+            }
+            _ => panic!("error not thrown"),
+        }
     }
 }
