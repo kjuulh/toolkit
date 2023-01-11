@@ -1,8 +1,10 @@
-use crate::review_backend::{models::PullRequest, DefaultReviewBackend, DynReviewBackend};
+use crate::review_backend::{
+    models::{MenuChoice, PullRequest, ReviewMenuChoice},
+    DefaultReviewBackend, DynReviewBackend,
+};
 
-use comfy_table::{presets::UTF8_HORIZONTAL_ONLY, Cell, Row, Table};
-#[cfg(test)]
-use mockall::{automock, mock, predicate::*};
+use comfy_table::{presets::UTF8_HORIZONTAL_ONLY, Cell, Table};
+use thiserror::Error;
 
 pub struct Review {
     backend: DynReviewBackend,
@@ -14,24 +16,43 @@ impl Default for Review {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum ReviewErrors {
+    #[error("user chose to exit")]
+    UserExit,
+}
+
 impl Review {
     fn new(backend: DynReviewBackend) -> Self {
         Self { backend }
     }
 
-    // Workflow
-    // 1. Fetch list of repos
-    // 2. Present menu
-    // 3. Choose begin quick review
-    // 4. Present pr and use delta to view changes
-    // 5. Approve, open, skip or quit
-    // 6. Repeat from 4
+    /// Workflow
+    /// 1. Fetch list of repos
+    /// 2. Present menu
+    /// 3. Choose begin quick review
+    /// 4. Present pr and use delta to view changes
+    /// 5. Approve, open, skip or quit
+    /// 6. Repeat from 4
     fn run(&self, review_requested: Option<String>) -> eyre::Result<()> {
-        let prs = self.backend.get_prs(review_requested)?;
+        let prs = self.backend.get_prs(review_requested.clone())?;
 
         let prs_table = Self::generate_prs_table(&prs);
-
         self.backend.present_prs(prs_table)?;
+
+        match self.backend.present_menu()? {
+            MenuChoice::Exit => eyre::bail!(ReviewErrors::UserExit),
+            MenuChoice::Begin => match self.review(&prs)? {
+                Some(choice) => match choice {
+                    MenuChoice::Exit => eyre::bail!(ReviewErrors::UserExit),
+                    MenuChoice::List => return self.run(review_requested.clone()),
+                    _ => eyre::bail!("invalid choice"),
+                },
+                None => {}
+            },
+            MenuChoice::Search => todo!(),
+            MenuChoice::List => return self.run(review_requested.clone()),
+        }
 
         Ok(())
     }
@@ -42,16 +63,77 @@ impl Review {
             .load_preset(UTF8_HORIZONTAL_ONLY)
             .set_content_arrangement(comfy_table::ContentArrangement::Dynamic)
             .set_header(vec![
-                Cell::new("repo"),
-                Cell::new("title"),
-                Cell::new("number"),
+                Cell::new("repo").add_attribute(comfy_table::Attribute::Bold),
+                Cell::new("title").add_attribute(comfy_table::Attribute::Bold),
+                Cell::new("number").add_attribute(comfy_table::Attribute::Bold),
             ])
-            .add_rows(prs.iter().map(|pr| {
+            .add_rows(prs.iter().take(20).map(|pr| {
                 let pr = pr.clone();
-                vec![pr.repository.name, pr.title, pr.number.to_string()]
+                vec![
+                    Cell::new(pr.repository.name).fg(comfy_table::Color::Green),
+                    Cell::new(pr.title),
+                    Cell::new(pr.number.to_string()),
+                ]
             }));
 
         table.to_string()
+    }
+
+    fn review(&self, prs: &Vec<PullRequest>) -> eyre::Result<Option<MenuChoice>> {
+        for pr in prs {
+            self.backend.clear()?;
+            self.backend.present_pr(pr)?;
+            self.review_pr(pr)?;
+            if let Some(choice) = self.present_pr_menu(pr)? {
+                return Ok(Some(choice));
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn review_pr(&self, pr: &PullRequest) -> eyre::Result<()> {
+        self.backend.present_diff(pr)?;
+        Ok(())
+    }
+
+    fn approve(&self, pr: &PullRequest) -> eyre::Result<()> {
+        self.backend.approve(pr)?;
+
+        Ok(())
+    }
+
+    fn open_browser(&self, pr: &PullRequest) -> eyre::Result<Option<MenuChoice>> {
+        self.backend.pr_open_browser(pr)?;
+
+        self.present_pr_menu(pr)
+    }
+
+    fn present_pr_menu(&self, pr: &PullRequest) -> eyre::Result<Option<MenuChoice>> {
+        self.backend.present_pr(pr)?;
+
+        match self.backend.present_review_menu(pr)? {
+            ReviewMenuChoice::Exit => return Ok(Some(MenuChoice::Exit)),
+            ReviewMenuChoice::List => return Ok(Some(MenuChoice::List)),
+            ReviewMenuChoice::Approve => {
+                self.approve(pr)?;
+                return self.present_pr_menu(pr);
+            }
+            ReviewMenuChoice::Open => return self.open_browser(pr),
+            ReviewMenuChoice::Skip => {}
+            ReviewMenuChoice::Merge => self.merge(pr)?,
+            ReviewMenuChoice::ApproveAndMerge => {
+                self.approve(pr)?;
+                self.merge(pr)?;
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn merge(&self, pr: &PullRequest) -> eyre::Result<()> {
+        self.backend.enable_auto_merge(pr);
+        Ok(())
     }
 }
 
@@ -67,11 +149,16 @@ impl util::Cmd for Review {
 
 #[cfg(test)]
 mod tests {
-    use crate::review_backend::{models::Repository, MockReviewBackend};
+    use crate::review_backend::{
+        models::{self, Repository},
+        MockReviewBackend,
+    };
 
     use super::*;
 
-    use pretty_assertions::{assert_eq, assert_ne};
+    use base64::Engine;
+    use mockall::predicate::eq;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn can_fetch_prs() {
@@ -99,12 +186,17 @@ mod tests {
             .times(1)
             .returning(move |_| Ok(backendprs.clone()));
 
+        backend
+            .expect_present_menu()
+            .times(1)
+            .returning(|| Ok(models::MenuChoice::Exit));
+
         backend.expect_present_prs().times(1).returning(|_| Ok(()));
 
         let review = Review::new(std::sync::Arc::new(backend));
-        review
-            .run(Some("kjuulh".into()))
-            .expect("to return a list of pull requests");
+        let res = review.run(Some("kjuulh".into()));
+
+        assert_err::<ReviewErrors, _>(res)
     }
 
     #[test]
@@ -125,16 +217,41 @@ mod tests {
                 },
             },
         ];
-        let expected_table = "─────────────────────────────────────────────
- repo              title              number 
-═════════════════════════════════════════════
- some-name         some-title         0      
-─────────────────────────────────────────────
- some-other-name   some-other-title   1      
-─────────────────────────────────────────────";
 
+        let expected_table = "4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSAChtbMW0gcmVwbyAgICAgICAgICAgIBtbMG0gG1sxbSB0aXRsZSAgICAgICAgICAgIBtbMG0gG1sxbSBudW1iZXIgG1swbQrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKG1szODs1OzEwbSBzb21lLW5hbWUgICAgICAgG1szOW0gIHNvbWUtdGl0bGUgICAgICAgICAwICAgICAgCuKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAobWzM4OzU7MTBtIHNvbWUtb3RoZXItbmFtZSAbWzM5bSAgc29tZS1vdGhlci10aXRsZSAgIDEgICAgICAK4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA";
         let output = Review::generate_prs_table(&prs);
 
-        assert_eq!(output, expected_table.to_string())
+        compare_tables(output, expected_table)
+    }
+
+    fn compare_tables(actual: String, snapshot: &str) {
+        let b64 = base64::engine::general_purpose::STANDARD_NO_PAD;
+        let snapshot = snapshot.clone().replace("\n", "").replace(" ", "");
+        println!("expected");
+        println!(
+            "{}",
+            std::str::from_utf8(
+                b64.decode(&snapshot)
+                    .expect("table to be decodeable")
+                    .as_slice()
+            )
+            .expect("to be utf8")
+        );
+
+        println!("actual");
+        println!("{actual}");
+
+        assert_eq!(b64.encode(actual), snapshot);
+    }
+
+    fn assert_err<TExpected, TVal>(res: eyre::Result<TVal>) {
+        match res {
+            Err(e) => {
+                if !e.is::<ReviewErrors>() {
+                    panic!("invalid error: {}", e)
+                }
+            }
+            _ => panic!("error not thrown"),
+        }
     }
 }
