@@ -1,5 +1,5 @@
 use crate::review_backend::{
-    models::{MenuChoice, PullRequest, ReviewMenuChoice},
+    models::{MenuChoice, MergeStrategy, PullRequest, ReviewMenuChoice},
     DefaultReviewBackend, DynReviewBackend,
 };
 
@@ -34,7 +34,11 @@ impl Review {
     /// 4. Present pr and use delta to view changes
     /// 5. Approve, open, skip or quit
     /// 6. Repeat from 4
-    fn run(&self, review_requested: Option<String>) -> eyre::Result<()> {
+    fn run(
+        &self,
+        review_requested: Option<String>,
+        merge_strategy: &Option<MergeStrategy>,
+    ) -> eyre::Result<()> {
         let prs = self.backend.get_prs(review_requested.clone())?;
 
         let prs_table = Self::generate_prs_table(&prs);
@@ -42,16 +46,16 @@ impl Review {
 
         match self.backend.present_menu()? {
             MenuChoice::Exit => eyre::bail!(ReviewErrors::UserExit),
-            MenuChoice::Begin => match self.review(&prs)? {
+            MenuChoice::Begin => match self.review(&prs, &merge_strategy)? {
                 Some(choice) => match choice {
                     MenuChoice::Exit => eyre::bail!(ReviewErrors::UserExit),
-                    MenuChoice::List => return self.run(review_requested.clone()),
+                    MenuChoice::List => return self.run(review_requested.clone(), merge_strategy),
                     _ => eyre::bail!("invalid choice"),
                 },
                 None => {}
             },
             MenuChoice::Search => todo!(),
-            MenuChoice::List => return self.run(review_requested.clone()),
+            MenuChoice::List => return self.run(review_requested.clone(), merge_strategy),
         }
 
         Ok(())
@@ -79,12 +83,16 @@ impl Review {
         table.to_string()
     }
 
-    fn review(&self, prs: &Vec<PullRequest>) -> eyre::Result<Option<MenuChoice>> {
+    fn review(
+        &self,
+        prs: &Vec<PullRequest>,
+        merge_strategy: &Option<MergeStrategy>,
+    ) -> eyre::Result<Option<MenuChoice>> {
         for pr in prs {
             self.backend.clear()?;
             self.backend.present_pr(pr)?;
             self.review_pr(pr)?;
-            if let Some(choice) = self.present_pr_menu(pr)? {
+            if let Some(choice) = self.present_pr_menu(pr, merge_strategy)? {
                 return Ok(Some(choice));
             }
         }
@@ -103,13 +111,21 @@ impl Review {
         Ok(())
     }
 
-    fn open_browser(&self, pr: &PullRequest) -> eyre::Result<Option<MenuChoice>> {
+    fn open_browser(
+        &self,
+        pr: &PullRequest,
+        merge_strategy: &Option<MergeStrategy>,
+    ) -> eyre::Result<Option<MenuChoice>> {
         self.backend.pr_open_browser(pr)?;
 
-        self.present_pr_menu(pr)
+        self.present_pr_menu(pr, merge_strategy)
     }
 
-    fn present_pr_menu(&self, pr: &PullRequest) -> eyre::Result<Option<MenuChoice>> {
+    fn present_pr_menu(
+        &self,
+        pr: &PullRequest,
+        merge_strategy: &Option<MergeStrategy>,
+    ) -> eyre::Result<Option<MenuChoice>> {
         self.backend.present_pr(pr)?;
 
         match self.backend.present_review_menu(pr)? {
@@ -117,33 +133,58 @@ impl Review {
             ReviewMenuChoice::List => return Ok(Some(MenuChoice::List)),
             ReviewMenuChoice::Approve => {
                 self.approve(pr)?;
-                return self.present_pr_menu(pr);
+                return self.present_pr_menu(pr, merge_strategy);
             }
-            ReviewMenuChoice::Open => return self.open_browser(pr),
+            ReviewMenuChoice::Open => return self.open_browser(pr, merge_strategy),
             ReviewMenuChoice::Skip => {}
-            ReviewMenuChoice::Merge => self.merge(pr)?,
+            ReviewMenuChoice::Merge => self.merge(pr, merge_strategy)?,
             ReviewMenuChoice::ApproveAndMerge => {
                 self.approve(pr)?;
-                self.merge(pr)?;
+                self.merge(pr, merge_strategy)?;
             }
         }
 
         Ok(None)
     }
 
-    fn merge(&self, pr: &PullRequest) -> eyre::Result<()> {
-        self.backend.enable_auto_merge(pr);
+    fn merge(&self, pr: &PullRequest, merge_strategy: &Option<MergeStrategy>) -> eyre::Result<()> {
+        self.backend.enable_auto_merge(pr, merge_strategy)?;
         Ok(())
     }
 }
 
 impl util::Cmd for Review {
     fn cmd() -> eyre::Result<clap::Command> {
-        Ok(clap::Command::new("review"))
+        Ok(clap::Command::new("review")
+            .arg(
+                clap::Arg::new("review-requested")
+                    .long("review-requested")
+                    .default_value("@me")
+                    .help("which user or team to pull reviews from"),
+            )
+            .arg(
+                clap::Arg::new("merge-strategy")
+                    .long("merge-strategy")
+                    .help(
+                    "when merging which merge strategy to use, possible values: [squash, merge]",
+                ),
+            ))
     }
 
-    fn exec(_: &clap::ArgMatches) -> eyre::Result<()> {
-        Self::default().run(Some("lunarway/squad-aura".into()))
+    fn exec(args: &clap::ArgMatches) -> eyre::Result<()> {
+        let request_requested = args
+            .get_one::<String>("review-requested")
+            .map(|r| r.clone());
+
+        let squash = args
+            .get_one::<String>("merge-strategy")
+            .and_then(|s| match s.as_str() {
+                "squash" => Some(MergeStrategy::Squash),
+                "merge" => Some(MergeStrategy::MergeCommit),
+                _ => None,
+            });
+
+        Self::default().run(request_requested, &squash)
     }
 }
 
@@ -194,7 +235,7 @@ mod tests {
         backend.expect_present_prs().times(1).returning(|_| Ok(()));
 
         let review = Review::new(std::sync::Arc::new(backend));
-        let res = review.run(Some("kjuulh".into()));
+        let res = review.run(None, None);
 
         assert_err::<ReviewErrors, _>(res)
     }

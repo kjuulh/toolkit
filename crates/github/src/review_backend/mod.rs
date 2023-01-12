@@ -2,7 +2,7 @@ pub mod models;
 
 use std::io::Write;
 
-use self::models::{MenuChoice, PullRequest, ReviewMenuChoice};
+use self::models::{MenuChoice, MergeStrategy, PullRequest, ReviewMenuChoice};
 
 #[cfg(test)]
 use mockall::{automock, predicate::*};
@@ -16,7 +16,11 @@ pub trait ReviewBackend {
     fn approve(&self, pr: &PullRequest) -> eyre::Result<()>;
     fn pr_open_browser(&self, pr: &PullRequest) -> eyre::Result<()>;
     fn clear(&self) -> eyre::Result<()>;
-    fn enable_auto_merge(&self, pr: &PullRequest) -> eyre::Result<()>;
+    fn enable_auto_merge(
+        &self,
+        pr: &PullRequest,
+        merge_strategy: &Option<MergeStrategy>,
+    ) -> eyre::Result<()>;
     fn present_pr(&self, pr: &PullRequest) -> eyre::Result<()>;
 }
 
@@ -34,11 +38,9 @@ impl ReviewBackend for DefaultReviewBackend {
                 "prs",
                 "--state=open",
                 "--review-requested",
-                "@me",
-                //                review_request.unwrap().as_str(),
+                review_request.unwrap_or("@me".into()).as_str(),
                 "--label",
                 "dependencies",
-                //"--checks=pending",
                 "--json",
                 "repository,number,title",
             ],
@@ -163,19 +165,30 @@ impl ReviewBackend for DefaultReviewBackend {
         Ok(())
     }
 
-    fn enable_auto_merge(&self, pr: &PullRequest) -> eyre::Result<()> {
-        util::shell::run(
-            &[
-                "gh",
-                "pr",
-                "merge",
-                pr.number.to_string().as_str(),
-                "--auto",
-                "--repo",
-                pr.repository.name.as_str(),
-            ],
-            None,
-        )?;
+    fn enable_auto_merge(
+        &self,
+        pr: &PullRequest,
+        merge_strategy: &Option<MergeStrategy>,
+    ) -> eyre::Result<()> {
+        let number = pr.number.to_string();
+        let mut args = vec![
+            "gh",
+            "pr",
+            "merge",
+            number.as_str(),
+            "--auto",
+            "--repo",
+            pr.repository.name.as_str(),
+        ];
+
+        if let Some(merge_strategy) = merge_strategy {
+            match merge_strategy {
+                MergeStrategy::Squash => args.push("--squash"),
+                MergeStrategy::MergeCommit => args.push("--merge"),
+            }
+        }
+
+        util::shell::run(args.as_slice(), None)?;
 
         Ok(())
     }

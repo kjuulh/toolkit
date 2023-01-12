@@ -13,6 +13,12 @@ pub struct PullRequest {
     pub repository: Repository,
 }
 
+#[derive(Debug, Clone)]
+pub enum MergeStrategy {
+    Squash,
+    MergeCommit,
+}
+
 pub enum MenuChoice {
     Exit,
     Begin,
