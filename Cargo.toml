@@ -17,7 +17,7 @@ members = [
 ]
 
 [workspace.dependencies]
-clap = { version = "4.0.32", features = ["cargo"] }
+clap = { version = "4.1.1", features = ["cargo"] }
 eyre = "0.6.8"
 dirs = "4.0.0"
 walkdir = "2.3.2"
