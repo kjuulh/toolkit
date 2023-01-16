@@ -101,7 +101,7 @@ impl ReviewBackend for DefaultReviewBackend {
     fn present_review_menu(&self, pr: &PullRequest) -> eyre::Result<ReviewMenuChoice> {
         println!("");
         println!("Review - Menu");
-        println!("Approve (a), Merge (m), Approve and auto-merge (c), Skip (s), List (l), Open in browser (o), Exit (q)");
+        println!("Approve (a), Merge (m), Approve and auto-merge (c), Diff (d), Skip (s), List (l), Open in browser (o), Exit (q)");
         print!("> ");
         std::io::stdout().flush()?;
 
@@ -117,6 +117,7 @@ impl ReviewBackend for DefaultReviewBackend {
                 's' | 'n' => ReviewMenuChoice::Skip,
                 'm' => ReviewMenuChoice::Merge,
                 'c' => ReviewMenuChoice::ApproveAndMerge,
+                'd' => ReviewMenuChoice::Diff,
                 _ => self.present_review_menu(pr)?,
             },
         };
@@ -194,6 +195,8 @@ impl ReviewBackend for DefaultReviewBackend {
     }
 
     fn present_pr(&self, pr: &PullRequest) -> eyre::Result<()> {
+        println!();
+        println!("---");
         println!("repo: {} - title: {}", pr.repository.name, pr.title);
 
         Ok(())

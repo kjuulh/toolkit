@@ -34,4 +34,5 @@ pub enum ReviewMenuChoice {
     Skip,
     Merge,
     ApproveAndMerge,
+    Diff,
 }

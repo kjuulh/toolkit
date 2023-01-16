@@ -11,11 +11,23 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
+  get-next-version:
+    name: Calculate next release
+    runs-on: ubuntu-latest
+    outputs:
+      new-release-published: ${{ steps.get-next-version.outputs.new-release-published }}
+      new-release-version: ${{ steps.get-next-version.outputs.new-release-version }}
+
+    steps:
+      - uses: semantic-release-action/next-release-version@v1
+        id: get-next-version
   release:
     name: ${{ matrix.target }}
     permissions:
       contents: write
     runs-on: ${{ matrix.os }}
+    needs:
+      - "get-next-version"
     strategy:
       fail-fast: false
       matrix:
@@ -46,6 +58,16 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: Install semantic-release-cargo
+        if: needs.get-next-version.outputs.new-release-published == 'true'
+        uses: taiki-e/install-action@v1
+        with:
+          tool: semantic-release-cargo@2
+
+      - name: Prepare semantic-release for Rust
+        if: needs.get-next-version.outputs.new-release-published == 'true'
+        run: semantic-release-cargo prepare ${{ needs.get-next-version.outputs.new-release-version }}
 
       - name: Get version
         id: get_version
