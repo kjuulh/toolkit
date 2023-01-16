@@ -142,6 +142,10 @@ impl Review {
                 self.approve(pr)?;
                 self.merge(pr, merge_strategy)?;
             }
+            ReviewMenuChoice::Diff => {
+                self.review_pr(pr)?;
+                return self.present_pr_menu(pr, merge_strategy);
+            }
         }
 
         Ok(None)
