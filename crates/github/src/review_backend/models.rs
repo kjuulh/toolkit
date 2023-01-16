@@ -35,4 +35,5 @@ pub enum ReviewMenuChoice {
     Merge,
     ApproveAndMerge,
     Diff,
+    StatusChecks,
 }

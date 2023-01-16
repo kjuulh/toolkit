@@ -22,6 +22,7 @@ pub trait ReviewBackend {
         merge_strategy: &Option<MergeStrategy>,
     ) -> eyre::Result<()>;
     fn present_pr(&self, pr: &PullRequest) -> eyre::Result<()>;
+    fn present_status_checks(&self, pr: &PullRequest) -> eyre::Result<()>;
 }
 
 pub type DynReviewBackend = std::sync::Arc<dyn ReviewBackend + Send + Sync>;
@@ -107,19 +108,17 @@ impl ReviewBackend for DefaultReviewBackend {
 
         let mut raw_choice = String::new();
         std::io::stdin().read_line(&mut raw_choice)?;
-        let choice = match raw_choice.chars().take(1).next() {
-            None => ReviewMenuChoice::Exit,
-            Some(raw_choice) => match raw_choice {
-                'q' => ReviewMenuChoice::Exit,
-                'l' => ReviewMenuChoice::List,
-                'a' => ReviewMenuChoice::Approve,
-                'o' => ReviewMenuChoice::Open,
-                's' | 'n' => ReviewMenuChoice::Skip,
-                'm' => ReviewMenuChoice::Merge,
-                'c' => ReviewMenuChoice::ApproveAndMerge,
-                'd' => ReviewMenuChoice::Diff,
-                _ => self.present_review_menu(pr)?,
-            },
+        let choice = match raw_choice.as_str() {
+            "q" => ReviewMenuChoice::Exit,
+            "l" => ReviewMenuChoice::List,
+            "a" => ReviewMenuChoice::Approve,
+            "o" => ReviewMenuChoice::Open,
+            "s" | "n" => ReviewMenuChoice::Skip,
+            "m" => ReviewMenuChoice::Merge,
+            "c" => ReviewMenuChoice::ApproveAndMerge,
+            "d" => ReviewMenuChoice::Diff,
+            "sc" => ReviewMenuChoice::Diff,
+            _ => self.present_review_menu(pr)?,
         };
 
         Ok(choice)
@@ -198,6 +197,23 @@ impl ReviewBackend for DefaultReviewBackend {
         println!();
         println!("---");
         println!("repo: {} - title: {}", pr.repository.name, pr.title);
+
+        Ok(())
+    }
+
+    fn present_status_checks(&self, pr: &PullRequest) -> eyre::Result<()> {
+        util::shell::run(
+            &[
+                "gh",
+                "pr",
+                "view",
+                pr.number.to_string().as_str(),
+                "-w",
+                "--repo",
+                pr.repository.name.as_str(),
+            ],
+            None,
+        )?;
 
         Ok(())
     }
