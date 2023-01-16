@@ -59,15 +59,48 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v3
+        with:
+          semantic_version: 16
+          # you can set branches for semantic-release above v16.
+          branches: |
+            [
+              '+([0-9])?(.{+([0-9]),x}).x',
+              'main', 
+              'next', 
+              'next-major', 
+              {
+                name: 'beta', 
+                prerelease: true
+              }, 
+              {
+                name: 'alpha', 
+                prerelease: true
+              }
+            ]
+          extra_plugins: |
+            @semantic-release/changelog@6.0.0
+            @semantic-release/git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Releasing
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: |
+          echo ${{ steps.semantic.outputs.new_release_version }}
+
       - name: Install semantic-release-cargo
-        if: needs.get-next-version.outputs.new-release-published == 'true'
+        if: steps.semantic.outputs.new-release-published == 'true'
         uses: taiki-e/install-action@v1
         with:
           tool: semantic-release-cargo@2
 
       - name: Prepare semantic-release for Rust
-        if: needs.get-next-version.outputs.new-release-published == 'true'
-        run: semantic-release-cargo prepare ${{ needs.get-next-version.outputs.new-release-version }}
+        if: steps.semantic.outputs.new-release-published == 'true'
+        run: semantic-release-cargo prepare ${{ steps.semantic.outputs.new-release-version }}
 
       - name: Get version
         id: get_version
