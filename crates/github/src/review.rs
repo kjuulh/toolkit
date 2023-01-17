@@ -128,6 +128,8 @@ impl Review {
     ) -> eyre::Result<Option<MenuChoice>> {
         self.backend.present_pr(pr)?;
 
+        self.present_status_checks(pr)?;
+
         match self.backend.present_review_menu(pr)? {
             ReviewMenuChoice::Exit => return Ok(Some(MenuChoice::Exit)),
             ReviewMenuChoice::List => return Ok(Some(MenuChoice::List)),
@@ -146,6 +148,10 @@ impl Review {
                 self.review_pr(pr)?;
                 return self.present_pr_menu(pr, merge_strategy);
             }
+            ReviewMenuChoice::StatusChecks => {
+                self.present_status_checks(pr)?;
+                return self.present_pr_menu(pr, merge_strategy);
+            }
         }
 
         Ok(None)
@@ -153,6 +159,12 @@ impl Review {
 
     fn merge(&self, pr: &PullRequest, merge_strategy: &Option<MergeStrategy>) -> eyre::Result<()> {
         self.backend.enable_auto_merge(pr, merge_strategy)?;
+        Ok(())
+    }
+
+    fn present_status_checks(&self, pr: &PullRequest) -> eyre::Result<()> {
+        self.backend.present_status_checks(pr)?;
+
         Ok(())
     }
 }
