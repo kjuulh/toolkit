@@ -22,6 +22,7 @@ pub trait ReviewBackend {
         pr: &PullRequest,
         merge_strategy: &Option<MergeStrategy>,
     ) -> eyre::Result<()>;
+    fn merge(&self, pr: &PullRequest, merge_strategy: &Option<MergeStrategy>) -> eyre::Result<()>;
     fn present_pr(&self, pr: &PullRequest) -> eyre::Result<()>;
     fn present_status_checks(&self, pr: &PullRequest) -> eyre::Result<()>;
 }
@@ -178,6 +179,29 @@ impl ReviewBackend for DefaultReviewBackend {
             "merge",
             number.as_str(),
             "--auto",
+            "--repo",
+            pr.repository.name.as_str(),
+        ];
+
+        if let Some(merge_strategy) = merge_strategy {
+            match merge_strategy {
+                MergeStrategy::Squash => args.push("--squash"),
+                MergeStrategy::MergeCommit => args.push("--merge"),
+            }
+        }
+
+        util::shell::run(args.as_slice(), None)?;
+
+        Ok(())
+    }
+
+    fn merge(&self, pr: &PullRequest, merge_strategy: &Option<MergeStrategy>) -> eyre::Result<()> {
+        let number = pr.number.to_string();
+        let mut args = vec![
+            "gh",
+            "pr",
+            "merge",
+            number.as_str(),
             "--repo",
             pr.repository.name.as_str(),
         ];
