@@ -139,10 +139,18 @@ impl Review {
             }
             ReviewMenuChoice::Open => return self.open_browser(pr, merge_strategy),
             ReviewMenuChoice::Skip => {}
-            ReviewMenuChoice::Merge => self.merge(pr, merge_strategy)?,
+            ReviewMenuChoice::Merge => {
+                if let Err(e) = self.merge(pr, merge_strategy) {
+                    println!("could not merge: {}", e);
+                    return self.present_pr_menu(pr, merge_strategy);
+                }
+            }
             ReviewMenuChoice::ApproveAndMerge => {
                 self.approve(pr)?;
-                self.merge(pr, merge_strategy)?;
+                if let Err(e) = self.merge(pr, merge_strategy) {
+                    println!("could not merge: {}", e);
+                    return self.present_pr_menu(pr, merge_strategy);
+                }
             }
             ReviewMenuChoice::Diff => {
                 self.review_pr(pr)?;
@@ -158,7 +166,13 @@ impl Review {
     }
 
     fn merge(&self, pr: &PullRequest, merge_strategy: &Option<MergeStrategy>) -> eyre::Result<()> {
-        self.backend.enable_auto_merge(pr, merge_strategy)?;
+        if let Err(e) = self.backend.enable_auto_merge(pr, merge_strategy) {
+            println!("could not enable auto-merge merge because: {}", e);
+            if let Err(e) = self.backend.merge(pr, merge_strategy) {
+                println!("could not merge because: {}", e);
+                return Err(e);
+            }
+        }
         Ok(())
     }
 
