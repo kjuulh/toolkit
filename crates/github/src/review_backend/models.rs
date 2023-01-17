@@ -37,3 +37,33 @@ pub enum ReviewMenuChoice {
     Diff,
     StatusChecks,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StatusChecks {
+    #[serde(rename(deserialize = "statusCheckRollup"))]
+    pub checks: Vec<StatusCheck>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(tag = "__typename")]
+pub enum StatusCheck {
+    CheckRun(CheckRun),
+    StatusContext(StatusContext),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CheckRun {
+    pub conclusion: String,
+    #[serde(alias = "detailsUrl")]
+    pub details_url: String,
+    pub name: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StatusContext {
+    #[serde(alias = "targetUrl")]
+    pub target_url: String,
+    pub context: String,
+    pub state: String,
+}

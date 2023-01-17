@@ -128,6 +128,8 @@ impl Review {
     ) -> eyre::Result<Option<MenuChoice>> {
         self.backend.present_pr(pr)?;
 
+        self.present_status_checks(pr)?;
+
         match self.backend.present_review_menu(pr)? {
             ReviewMenuChoice::Exit => return Ok(Some(MenuChoice::Exit)),
             ReviewMenuChoice::List => return Ok(Some(MenuChoice::List)),

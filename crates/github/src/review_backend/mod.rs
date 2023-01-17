@@ -4,6 +4,7 @@ use std::io::Write;
 
 use self::models::{MenuChoice, MergeStrategy, PullRequest, ReviewMenuChoice};
 
+use comfy_table::{presets::UTF8_HORIZONTAL_ONLY, Cell, Table};
 #[cfg(test)]
 use mockall::{automock, predicate::*};
 #[cfg_attr(test, automock)]
@@ -102,13 +103,13 @@ impl ReviewBackend for DefaultReviewBackend {
     fn present_review_menu(&self, pr: &PullRequest) -> eyre::Result<ReviewMenuChoice> {
         println!("");
         println!("Review - Menu");
-        println!("Approve (a), Merge (m), Approve and auto-merge (c), Diff (d), Skip (s), List (l), Open in browser (o), Exit (q)");
+        println!("Approve (a), Merge (m), Approve and auto-merge (c), Diff (d), Status Checks (sc), Skip (s), List (l), Open in browser (o), Exit (q)");
         print!("> ");
         std::io::stdout().flush()?;
 
         let mut raw_choice = String::new();
         std::io::stdin().read_line(&mut raw_choice)?;
-        let choice = match raw_choice.as_str() {
+        let choice = match raw_choice.trim() {
             "q" => ReviewMenuChoice::Exit,
             "l" => ReviewMenuChoice::List,
             "a" => ReviewMenuChoice::Approve,
@@ -117,7 +118,7 @@ impl ReviewBackend for DefaultReviewBackend {
             "m" => ReviewMenuChoice::Merge,
             "c" => ReviewMenuChoice::ApproveAndMerge,
             "d" => ReviewMenuChoice::Diff,
-            "sc" => ReviewMenuChoice::Diff,
+            "sc" => ReviewMenuChoice::StatusChecks,
             _ => self.present_review_menu(pr)?,
         };
 
@@ -202,18 +203,52 @@ impl ReviewBackend for DefaultReviewBackend {
     }
 
     fn present_status_checks(&self, pr: &PullRequest) -> eyre::Result<()> {
-        util::shell::run(
+        let output = util::shell::run_with_input_and_output(
             &[
                 "gh",
                 "pr",
                 "view",
                 pr.number.to_string().as_str(),
-                "-w",
+                "--json",
+                "statusCheckRollup",
                 "--repo",
                 pr.repository.name.as_str(),
             ],
-            None,
+            "".into(),
         )?;
+
+        let parsed_output = std::str::from_utf8(&output.stdout)?;
+        let checks: models::StatusChecks = serde_json::from_str(parsed_output)?;
+
+        let mut table = Table::new();
+        let table = table
+            .load_preset(UTF8_HORIZONTAL_ONLY)
+            .set_content_arrangement(comfy_table::ContentArrangement::Dynamic)
+            .set_header(vec![
+                Cell::new("name").add_attribute(comfy_table::Attribute::Bold),
+                Cell::new("status").add_attribute(comfy_table::Attribute::Bold),
+                Cell::new("conclusion").add_attribute(comfy_table::Attribute::Bold),
+                Cell::new("url").add_attribute(comfy_table::Attribute::Bold),
+            ])
+            .add_rows(checks.checks.iter().take(20).map(|pr| {
+                let pr = pr.clone();
+                match pr {
+                    models::StatusCheck::CheckRun(check) => vec![
+                        Cell::new(check.name).fg(comfy_table::Color::Green),
+                        Cell::new(check.status),
+                        Cell::new(check.conclusion),
+                        Cell::new(check.details_url),
+                    ],
+                    models::StatusCheck::StatusContext(check) => vec![
+                        Cell::new(check.context).fg(comfy_table::Color::Green),
+                        Cell::new(""),
+                        Cell::new(check.state),
+                        Cell::new(check.target_url),
+                    ],
+                }
+            }));
+
+        println!("{}", table.to_string());
 
         Ok(())
     }
