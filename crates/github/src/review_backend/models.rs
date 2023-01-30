@@ -67,3 +67,10 @@ pub struct StatusContext {
     pub context: String,
     pub state: String,
 }
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub enum FilterStatus {
+    Success,
+    Failure,
+    Incomplete,
+}
