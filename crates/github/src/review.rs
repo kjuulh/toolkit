@@ -1,5 +1,5 @@
 use crate::review_backend::{
-    models::{MenuChoice, MergeStrategy, PullRequest, ReviewMenuChoice},
+    models::{FilterStatus, MenuChoice, MergeStrategy, PullRequest, ReviewMenuChoice},
     DefaultReviewBackend, DynReviewBackend,
 };
 
@@ -38,6 +38,7 @@ impl Review {
         &self,
         review_requested: Option<String>,
         merge_strategy: &Option<MergeStrategy>,
+        filter_status: &Option<FilterStatus>,
     ) -> eyre::Result<()> {
         let prs = self.backend.get_prs(review_requested.clone())?;
 
@@ -49,13 +50,17 @@ impl Review {
             MenuChoice::Begin => match self.review(&prs, &merge_strategy)? {
                 Some(choice) => match choice {
                     MenuChoice::Exit => eyre::bail!(ReviewErrors::UserExit),
-                    MenuChoice::List => return self.run(review_requested.clone(), merge_strategy),
+                    MenuChoice::List => {
+                        return self.run(review_requested.clone(), merge_strategy, filter_status)
+                    }
                     _ => eyre::bail!("invalid choice"),
                 },
                 None => {}
             },
             MenuChoice::Search => todo!(),
-            MenuChoice::List => return self.run(review_requested.clone(), merge_strategy),
+            MenuChoice::List => {
+                return self.run(review_requested.clone(), merge_strategy, filter_status)
+            }
         }
 
         Ok(())
@@ -198,6 +203,12 @@ impl util::Cmd for Review {
                     .help(
                     "when merging which merge strategy to use, possible values: [squash, merge]",
                 ),
+            )
+            .arg(
+                clap::Arg::new("filter-status")
+                    .long("filter-status")
+                    .alias("fs")
+                    .help("filter status, these include [SUCCESS, FAILURE, INCOMPLETE]"),
             ))
     }
 
@@ -214,7 +225,16 @@ impl util::Cmd for Review {
                 _ => None,
             });
 
-        Self::default().run(request_requested, &squash)
+        let filter_status =
+            args.get_one::<String>("filter-status")
+                .and_then(|s| match s.as_str() {
+                    "SUCCESS" => Some(FilterStatus::Success),
+                    "FAILURE" => Some(FilterStatus::Failure),
+                    "INCOMPLETE" => Some(FilterStatus::Incomplete),
+                    _ => None,
+                });
+
+        Self::default().run(request_requested, &squash, &filter_status)
     }
 }
 
