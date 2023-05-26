@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release over the course of 159 calendar days.
+ - 6 commits contributed to the release over the course of 159 calendar days.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Adjusting changelogs prior to release of util v0.2.0, github v0.2.0, sourcegraph v0.1.0, stats v0.1.0, tldr v0.2.0, toolkit v0.2.0 ([`dc9d469`](https://github.com/kjuulh/toolkit/commit/dc9d469f9a3ad3ca8b49e10b1565d4bf9d382f66))
     - chore(release) fix pipeline ([`5894bd5`](https://github.com/kjuulh/toolkit/commit/5894bd5bb1ad91e70628771594fa1ec7cac16698))
     - with fuzzy-clone ([`27f63cc`](https://github.com/kjuulh/toolkit/commit/27f63cc1f9b8df25e839069342dc4524bac18d0d))
     - add basic github ([`6610500`](https://github.com/kjuulh/toolkit/commit/66105004e091b8940ad84e9fc152f11b92a66856))
