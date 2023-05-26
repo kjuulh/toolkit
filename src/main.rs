@@ -4,6 +4,8 @@ mod init;
 mod prereqs;
 
 fn main() -> eyre::Result<()> {
+    color_eyre::install().unwrap();
+
     let matches = clap::Command::new("toolkit")
         .subcommands([
             prereqs::prereqs()?,
