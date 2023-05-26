@@ -33,3 +33,4 @@ stats = { path = "crates/stats" }
 
 clap.workspace = true
 eyre.workspace = true
+color-eyre = "0.6.2"

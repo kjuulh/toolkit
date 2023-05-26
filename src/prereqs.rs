@@ -1,6 +1,6 @@
 use clap::ArgMatches;
 
-const DEPS: &[&str] = &["gh", "fzf"];
+const DEPS: &[&str] = &["gh", "fzf", "sourcegraph-cli"];
 
 // -- List
 //

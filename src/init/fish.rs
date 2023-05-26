@@ -7,7 +7,7 @@ impl util::Cmd for Fish {
         Ok(cmd)
     }
 
-    fn exec(args: &clap::ArgMatches) -> eyre::Result<()> {
+    fn exec(_args: &clap::ArgMatches) -> eyre::Result<()> {
         Ok(())
     }
 }

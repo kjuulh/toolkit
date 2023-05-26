@@ -285,7 +285,7 @@ mod tests {
         backend.expect_present_prs().times(1).returning(|_| Ok(()));
 
         let review = Review::new(std::sync::Arc::new(backend));
-        let res = review.run(None, &None);
+        let res = review.run(None, &None, &None);
 
         assert_err::<ReviewErrors, _>(res)
     }
