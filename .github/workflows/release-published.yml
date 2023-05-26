@@ -39,7 +39,6 @@ jobs:
             "dust"
             "bottom"
             "procs"
-            "sourcegraph/src-cli/src-cli"
             "tokei"
             "bandwhich"
 
