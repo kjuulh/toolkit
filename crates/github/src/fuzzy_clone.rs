@@ -101,8 +101,8 @@ impl FuzzyClone {
             return Ok(false);
         }
         let metadata_time = cf_path.metadata()?.modified()?;
-        // Update at least once a day
-        let cur_time = std::time::SystemTime::now() - std::time::Duration::new(60 * 60 * 24, 0);
+        // Update at least once a week
+        let cur_time = std::time::SystemTime::now() - std::time::Duration::new(60 * 60 * 24 * 7, 0);
 
         if metadata_time < cur_time {
             return Ok(false);
