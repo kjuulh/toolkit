@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::sync::{Arc, Mutex};
 
 use clap::value_parser;
 use eyre::Context;
@@ -137,45 +138,69 @@ impl FuzzyClone {
     }
 
     fn get_entries() -> eyre::Result<Vec<GitHubEntry>> {
-        let mut entries = Vec::new();
+        let mut entries = Arc::new(Mutex::new(Vec::new()));
 
-        for org in Self::get_settings()?.orgs {
-            let private_entires = util::shell::run_with_input_and_output(
-                &[
-                    "gh",
-                    "repo",
-                    "list",
-                    &org,
-                    "--visibility",
-                    "private",
-                    "--limit",
-                    "1000",
-                ],
-                "".into(),
-            )?;
+        rayon::scope(|s| {
+            for org in Self::get_settings().unwrap().orgs {
+                s.spawn({
+                    let entries = entries.clone();
+                    let org = org.clone();
 
-            let public_entires = util::shell::run_with_input_and_output(
-                &[
-                    "gh",
-                    "repo",
-                    "list",
-                    &org,
-                    "--visibility",
-                    "public",
-                    "--limit",
-                    "1000",
-                ],
-                "".into(),
-            )?;
+                    move |_| {
+                        println!("fetching private repos for {}", org);
+                        let private_entires = util::shell::run_with_input_and_output(
+                            &[
+                                "gh",
+                                "repo",
+                                "list",
+                                &org,
+                                "--visibility",
+                                "private",
+                                "--limit",
+                                "1000",
+                            ],
+                            "".into(),
+                        )
+                        .unwrap();
+                        let private =
+                            std::str::from_utf8(private_entires.stdout.as_slice()).unwrap();
+                        let mut entries = entries.lock().unwrap();
+                        entries.push(Self::parse_entries(private.to_string()).unwrap());
+                        println!("done: fetching private repos for {}", org);
+                    }
+                });
 
-            let private = std::str::from_utf8(private_entires.stdout.as_slice())?;
-            let public = std::str::from_utf8(public_entires.stdout.as_slice())?;
-            let raw_entries = format!("{private}{public}");
+                let entries = entries.clone();
+                let org = org.clone();
+                s.spawn(move |_| {
+                    println!("fetching public repos for {}", org);
+                    let public_entires = util::shell::run_with_input_and_output(
+                        &[
+                            "gh",
+                            "repo",
+                            "list",
+                            &org,
+                            "--visibility",
+                            "public",
+                            "--limit",
+                            "1000",
+                        ],
+                        "".into(),
+                    )
+                    .unwrap();
 
-            entries.push(Self::parse_entries(raw_entries)?);
-        }
+                    let public = std::str::from_utf8(public_entires.stdout.as_slice()).unwrap();
+                    let mut entries = entries.lock().unwrap();
+                    entries.push(Self::parse_entries(public.to_string()).unwrap());
+                    println!("done: fetching public repos for {}", org);
+                })
+            }
+        });
 
-        Ok(entries.into_iter().flat_map(|s| s).collect())
+        let entries = Arc::try_unwrap(entries).unwrap().into_inner().unwrap();
+        let entries = entries.into_iter().flat_map(|s| s).collect();
+
+        Ok(entries)
     }
 
     fn clone(chosen: GitHubEntry) -> eyre::Result<std::path::PathBuf> {
