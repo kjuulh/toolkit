@@ -9,11 +9,7 @@ readme = "README.md"
 
 [workspace]
 members = [
-  "crates/tldr",
-  "crates/util",
-  "crates/sourcegraph",
-  "crates/github",
-  "crates/stats",
+  "crates/*",
 ]
 
 [workspace.dependencies]
@@ -30,6 +26,7 @@ tldr = { path = "crates/tldr" }
 sourcegraph = { path = "crates/sourcegraph" }
 util = { path = "crates/util" }
 stats = { path = "crates/stats" }
+gitea = { path = "crates/gitea" }
 
 clap.workspace = true
 eyre.workspace = true
